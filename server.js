@@ -5,16 +5,18 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
+const { MongoClient, ObjectId } = require('mongodb');
 
 const app = express();
 const port = 3000;
 
+// Middleware to parse JSON request bodies
+app.use(express.json());
+
 // Enable CORS for React frontend
 app.use(cors({
-    origin: 'http://localhost:5173', // Adjust this to match your React app's URL
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'multipart/form-data']
-}));
+    origin: 'http://localhost:5173'
+  }));
 
 // Configure multer for PDF upload
 const storage = multer.diskStorage({
@@ -130,8 +132,102 @@ app.post('/upload', uploadMiddleware, async (req, res) => {
             message: 'Failed to process PDF',
             details: error.message
         });
-    }
-});
+        }
+    });
+
+
+    const uri = 'mongodb+srv://aieman:aieman@mindmap-cluster.ur2hr.mongodb.net/?retryWrites=true&w=majority&appName=mindmap-cluster'; // Replace with your MongoDB connection string
+    const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+
+    app.post('/save', async (req, res) => {
+        try {
+        await client.connect();
+        const database = client.db('mindmaps'); // Replace with your database name
+        const collection = database.collection('nodes'); // Replace with your collection name
+
+        // console.log(req);
+        
+
+        const document = { ...req.body, _id: new ObjectId() };
+        const result = await collection.insertOne(document);
+
+        res.json({
+            status: 'success',
+            data: { _id: result.insertedId, ...req.body }
+        });
+        } catch (error) {
+        console.error('Save error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to save mindmap',
+            details: error.message
+        });
+        } finally {
+        await client.close();
+        }
+    });
+
+    app.get('/mindmap/:id', async (req, res) => {
+        try {
+            await client.connect();
+            const database = client.db('mindmaps'); // Replace with your database name
+            const collection = database.collection('nodes'); // Replace with your collection name
+
+            const mindmapId = req.params.id;
+            console.log(mindmapId);
+            
+            const mindmap = await collection.findOne({ _id: new ObjectId(mindmapId) });
+
+            console.log(mindmap);
+            
+
+            if (!mindmap) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Mindmap not found'
+                });
+            }
+
+            res.json({
+                status: 'success',
+                data: mindmap
+            });
+        } catch (error) {
+            console.error('Fetch error:', error);
+            res.status(500).json({
+                status: 'error',
+                message: 'Failed to fetch mindmap',
+                details: error.message
+            });
+        } finally {
+            await client.close();
+        }
+    });
+
+    app.get('/mindmaps', async (req, res) => {
+        try {
+            await client.connect();
+            const database = client.db('mindmaps'); // Replace with your database name
+            const collection = database.collection('nodes'); // Replace with your collection name
+
+            const mindmaps = await collection.find({}).toArray();
+
+            res.json({
+                status: 'success',
+                data: mindmaps
+            });
+        } catch (error) {
+            console.error('Fetch error:', error);
+            res.status(500).json({
+                status: 'error',
+                message: 'Failed to fetch mindmaps',
+                details: error.message
+            });
+        } finally {
+            await client.close();
+        }
+    });
+    
 
 // Health check endpoint
 app.get('/health', (req, res) => {

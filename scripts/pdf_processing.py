@@ -77,75 +77,79 @@ def get_mindmap_model():
     """
    # Create the model
     generation_config = {
-        "temperature": 1,
-        "top_p": 0.95,
-        "top_k": 40,
-        "max_output_tokens": 8192,
-        "response_schema": content.Schema(
+    "temperature": 1,
+    "top_p": 0.95,
+    "top_k": 40,
+    "max_output_tokens": 8192,
+    "response_schema": content.Schema(
+        type = content.Type.OBJECT,
+        enum = [],
+        required = ["mindMap"],
+        properties = {
+        "mindMap": content.Schema(
             type = content.Type.OBJECT,
             enum = [],
-            required = ["mindMap"],
+            required = ["title", "nodes"],
             properties = {
-            "mindMap": content.Schema(
+            "title": content.Schema(
+                type = content.Type.STRING,
+            ),
+            "nodes": content.Schema(
+                type = content.Type.ARRAY,
+                items = content.Schema(
                 type = content.Type.OBJECT,
                 enum = [],
-                required = ["title", "nodes"],
+                required = ["id", "title", "content", "unchangedText"],
                 properties = {
-                "title": content.Schema(
+                    "id": content.Schema(
                     type = content.Type.STRING,
-                ),
-                "nodes": content.Schema(
-                    type = content.Type.ARRAY,
-                    items = content.Schema(
+                    ),
+                    "title": content.Schema(
+                    type = content.Type.STRING,
+                    ),
+                    "content": content.Schema(
                     type = content.Type.OBJECT,
                     enum = [],
-                    required = ["id", "title", "key points", "unchangedText"],
+                    required = ["keyPoints"],
                     properties = {
-                        "id": content.Schema(
-                        type = content.Type.STRING,
-                        ),
-                        "title": content.Schema(
-                        type = content.Type.STRING,
-                        ),
-                        "key points": content.Schema(
+                        "keyPoints": content.Schema(
                         type = content.Type.ARRAY,
                         items = content.Schema(
                             type = content.Type.STRING,
                         ),
                         ),
-                        "unchangedText": content.Schema(
-                        type = content.Type.STRING,
-                        ),
-                        "references": content.Schema(
+                        "keyPointsExplanation": content.Schema(
                         type = content.Type.ARRAY,
                         items = content.Schema(
-                            type = content.Type.OBJECT,
-                            enum = [],
-                            required = ["title", "url"],
-                            properties = {
+                            type = content.Type.STRING,
+                        ),
+                        ),
+                        "externalReferences": content.Schema(
+                        type = content.Type.OBJECT,
+                        enum = [],
+                        required = ["title", "url"],
+                        properties = {
                             "title": content.Schema(
-                                type = content.Type.STRING,
+                            type = content.Type.STRING,
                             ),
                             "url": content.Schema(
-                                type = content.Type.STRING,
-                            ),
-                            },
-                        ),
-                        ),
-                        "children": content.Schema(
-                        type = content.Type.ARRAY,
-                        items = content.Schema(
                             type = content.Type.STRING,
-                        ),
+                            ),
+                        },
                         ),
                     },
                     ),
-                ),
+                    "unchangedText": content.Schema(
+                    type = content.Type.STRING,
+                    ),
                 },
+                ),
             ),
             },
         ),
-        "response_mime_type": "application/json",
+        },
+    ),
+    "response_mime_type": "application/json",
     }
     
     return genai.GenerativeModel(
@@ -215,7 +219,7 @@ def process_pdf_and_generate_mindmap(pdf_path: str) -> Dict:
         Your task is to:
         1. Extract key information and create nodes for a mind map.
         2. Include the title, a brief description, and the unchanged original text for each node.
-        3. Identify external references if applicable and include them with a title and URL.
+        3. Identify external sources for each keypoints for extra information, if applicable and include them with a title and URL.
 
         Please generate the JSON output based on the given text. Here is the text for processing:
         \n\n{full_text}
